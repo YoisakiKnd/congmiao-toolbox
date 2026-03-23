@@ -1,0 +1,122 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  /* Core Colors - Apple-inspired sleek palette */
+  --bg-app: #111111;
+  --bg-sidebar: #1A1A1A;
+  --bg-panel0: #222222;
+  --bg-panel1: #2A2A2A;
+  --bg-panel-hover: #333333;
+
+  /* Typography */
+  --text-primary: #FFFFFF;
+  --text-secondary: #A1A1AA;
+  --text-caption: #71717A;
+
+  /* Accent Colors */
+  --accent-blue: #0A84FF;
+  --accent-blue-soft: rgba(10, 132, 255, 0.15);
+  --accent-teal: #30D158;
+  --accent-teal-soft: rgba(48, 209, 88, 0.15);
+  
+  --border-subtle: rgba(255, 255, 255, 0.1);
+  --border-focus: rgba(255, 255, 255, 0.2);
+
+  /* Shadows for depth */
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.4);
+  --shadow-glow: 0 0 24px rgba(10, 132, 255, 0.2);
+
+  /* Animations */
+  --transition-fast: 0.15s cubic-bezier(0.2, 0.8, 0.2, 1);
+  --transition-normal: 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* Layout */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 24px;
+  --radius-full: 9999px;
+  
+  color-scheme: dark;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+[data-theme="light"] {
+  --bg-app: #F5F5F7;
+  --bg-sidebar: #FFFFFF;
+  --bg-panel0: #FFFFFF;
+  --bg-panel1: #F9F9F9;
+  --bg-panel-hover: #EBEBEB;
+
+  --text-primary: #1D1D1F;
+  --text-secondary: #86868B;
+  --text-caption: #86868B;
+
+  --border-subtle: rgba(0, 0, 0, 0.08);
+  --border-focus: rgba(0, 0, 0, 0.15);
+
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.08);
+  --shadow-glow: 0 0 24px rgba(10, 132, 255, 0.3);
+  
+  color-scheme: light;
+}
+
+/* Reset & Base */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body, #app {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  overflow: hidden; /* Tauri app style, no global scroll */
+}
+
+/* Typography elements */
+h1, h2, h3, h4, p {
+  margin: 0;
+}
+
+button {
+  font-family: inherit;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* Global Icon Styling */
+.material-symbols-rounded {
+  font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+  font-size: 20px;
+}
+
+/* Scrollbar styling for any scrolling areas */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-focus);
+}
