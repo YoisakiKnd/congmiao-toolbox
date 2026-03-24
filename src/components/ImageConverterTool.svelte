@@ -83,6 +83,8 @@
   <div class="content-area">
     <!-- Drop Zone -->
     <div class="drop-zone" 
+         role="button"
+         tabindex="0"
          class:hover={dragHover}
          class:has-image={!!fileObj}
          ondragover={handleDragOver}

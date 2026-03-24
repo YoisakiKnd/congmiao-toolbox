@@ -3,6 +3,20 @@
   import { onMount, onDestroy } from 'svelte';
   import { open } from '@tauri-apps/plugin-dialog';
 
+  interface MediaInfo {
+    title: string;
+    artist: string;
+    album: string;
+    playing: boolean;
+  }
+
+
+  interface AudioStatus {
+    volume: number;
+    muted: boolean;
+    media: MediaInfo | null;
+  }
+
   let isRunning = $state(false);
   let isPrivacyEnabled = $state(false);
   let privacyImagePath = $state<string | null>(null);
@@ -10,7 +24,7 @@
   let localIp = $state('0.0.0.0');
   let statusTimer: ReturnType<typeof setInterval>;
 
-  let audioStatus = $state({ volume: 0, muted: false });
+  let audioStatus = $state<AudioStatus>({ volume: 0, muted: false, media: null });
 
   const checkStatus = async () => {
     isRunning = await invoke<boolean>('get_peek_status');
@@ -125,10 +139,11 @@
       </div>
       <div class="setting-row">
         <span>启用隐私遮罩</span>
-        <button class="switch" class:on={isPrivacyEnabled} onclick={handleTogglePrivacy}>
+        <button class="switch" class:on={isPrivacyEnabled} onclick={handleTogglePrivacy} title="切换隐私遮罩" aria-label="切换隐私遮罩">
           <div class="knob"></div>
         </button>
       </div>
+
       
       <div class="image-selector">
         <span class="label">自定义隐私图片</span>
@@ -156,10 +171,11 @@
       </div>
       <div class="setting-row">
         <span>系统静音</span>
-        <button class="switch" class:on={audioStatus.muted} onclick={handleToggleMute}>
+        <button class="switch" class:on={audioStatus.muted} onclick={handleToggleMute} title="切换静音" aria-label="切换静音">
           <div class="knob"></div>
         </button>
       </div>
+
       <div class="volume-info">
         <span class="label">当前音量</span>
         <div class="vol-bar">

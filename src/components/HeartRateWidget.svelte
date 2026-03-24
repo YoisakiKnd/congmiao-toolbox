@@ -66,8 +66,9 @@
           <span class="material-symbols-rounded">close</span>
         </button>
       </div>
-      <label class="filter-label">设备名称或蓝牙地址</label>
+      <label class="filter-label" for="hr-device-filter">设备名称或蓝牙地址</label>
       <input
+        id="hr-device-filter"
         class="filter-input"
         type="text"
         placeholder="例: Polar H10 / AA:BB:CC"

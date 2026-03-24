@@ -63,7 +63,7 @@
 
     <div class="toggle-row">
       <span class="toggle-label">隐私模糊</span>
-      <button class="switch" class:active={isPrivacyEnabled} onclick={togglePrivacy}>
+      <button class="switch" class:active={isPrivacyEnabled} onclick={togglePrivacy} aria-label="切换隐私模糊" title="切换隐私模糊">
         <div class="knob"></div>
       </button>
     </div>

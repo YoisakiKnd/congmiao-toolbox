@@ -113,10 +113,13 @@
       </div>
 
       <div class="drop-zone" 
+           role="button"
+           tabindex="0"
            class:hover={dragHover}
            ondragover={handleDragOver}
            ondragleave={handleDragLeave}
            ondrop={handleFileDrop}>
+
         <span class="material-symbols-rounded drop-icon">upload_file</span>
         <div class="drop-texts">
           <h4>拖拽文件校验计算</h4>
