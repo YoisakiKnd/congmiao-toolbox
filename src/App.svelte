@@ -14,11 +14,21 @@
   import TranslatorTool from './components/TranslatorTool.svelte';
   import PeekPCTool from './components/PeekPCTool.svelte';
   import ScreenTimeView from './components/ScreenTimeView.svelte';
+  import HeartRateWidget from './components/HeartRateWidget.svelte';
+  import HROverlay from './components/HROverlay.svelte';
   import { appState } from './state.svelte';
   import { runTool } from './tools';
   import { onMount } from 'svelte';
 
+  let isOverlay = $state(false);
+
   onMount(() => {
+    // Check if this window is the OBS overlay
+    if (window.location.hash === '#/hr-overlay') {
+      isOverlay = true;
+      return; // Skip main app initialization for overlay
+    }
+
     document.documentElement.setAttribute('data-theme', appState.theme);
 
     const handleKeydown = (event: KeyboardEvent) => {
@@ -45,6 +55,9 @@
   });
 </script>
 
+{#if isOverlay}
+  <HROverlay />
+{:else}
 <div class="app-layout">
   <Sidebar />
   
@@ -57,6 +70,7 @@
         <div class="bento-grid">
           <SystemMonitorTile />
           <PeekPCWidget />
+          <HeartRateWidget />
         </div>
       {:else if appState.activeNavIndex === 1}
         <!-- 全部工具 (All Tools) -->
@@ -133,6 +147,7 @@
 </div>
 
 <CommandPalette />
+{/if}
 
 <style>
   .tool-directory {
@@ -243,11 +258,12 @@
 
   .bento-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 24px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
     width: 100%;
     margin: 0 auto;
-    max-width: 1600px;
+    max-width: 1000px;
+    align-content: start;
     flex: 1;
   }
 

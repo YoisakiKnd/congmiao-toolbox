@@ -24,9 +24,13 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sysinfo = "0.32"
 axum = "0.8.8"
-tokio = { version = "1.50.0", features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1.50.0", features = ["rt-multi-thread", "macros", "sync", "time", "net"] }
 tower-http = { version = "0.6.8", features = ["cors"] }
 screenshots = "0.8.10"
 image = "0.25.10"
 local-ip-address = "0.6.10"
 active-win-pos-rs = "0.10.0"
+btleplug = { version = "0.12.0", features = ["serde"] }
+uuid = { version = "1.22.0", features = ["v4"] }
+futures = "0.3.32"
+tauri-plugin-dialog = "2.6.0"

@@ -1,8 +1,10 @@
 use std::sync::Mutex;
 use sysinfo::System;
+use tauri::Manager;
 
 mod peek_server;
 mod usage_tracker;
+mod heartrate;
 
 struct AppState {
     sys: Mutex<System>,
@@ -59,6 +61,66 @@ fn get_privacy_status() -> bool {
     peek_server::PRIVACY_MODE.load(std::sync::atomic::Ordering::SeqCst)
 }
 
+#[tauri::command]
+fn set_peek_privacy_image(path: Option<String>) {
+    let mut p = peek_server::PRIVACY_IMAGE_PATH.get_or_init(|| std::sync::Mutex::new(None)).lock().unwrap();
+    *p = path;
+}
+
+
+#[tauri::command]
+fn start_hr_scan(app_handle: tauri::AppHandle) {
+    heartrate::start_scan(app_handle);
+}
+
+#[tauri::command]
+fn stop_hr_scan() {
+    heartrate::stop_scan();
+}
+
+#[derive(serde::Serialize)]
+struct HrStatus {
+    bpm: u16,
+    connected: bool,
+}
+
+#[tauri::command]
+fn get_hr_status() -> HrStatus {
+    HrStatus {
+        bpm: heartrate::CURRENT_BPM.load(std::sync::atomic::Ordering::SeqCst),
+        connected: heartrate::IS_CONNECTED.load(std::sync::atomic::Ordering::SeqCst),
+    }
+}
+
+#[tauri::command]
+fn set_hr_device_filter(filter: String) {
+    heartrate::set_target_device(filter);
+}
+
+#[tauri::command]
+fn get_hr_device_filter() -> String {
+    heartrate::get_target_device()
+}
+
+#[tauri::command]
+async fn open_hr_overlay(app_handle: tauri::AppHandle) -> Result<(), String> {
+    use tauri::WebviewWindowBuilder;
+    if app_handle.get_webview_window("hr-overlay").is_some() {
+        return Ok(());
+    }
+    
+    let url = tauri::WebviewUrl::App("index.html#/hr-overlay".into());
+    
+    WebviewWindowBuilder::new(&app_handle, "hr-overlay", url)
+        .title("♥ Heart Rate Monitor")
+        .inner_size(320.0, 200.0)
+        .resizable(true)
+        .build()
+        .map_err(|e| format!("Failed to open overlay: {}", e))?;
+    
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let mut sys = System::new_all();
@@ -70,6 +132,7 @@ pub fn run() {
             Ok(())
         })
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .manage(AppState {
             sys: Mutex::new(sys),
         })
@@ -80,7 +143,15 @@ pub fn run() {
             get_peek_status,
             toggle_privacy,
             get_privacy_status,
-            usage_tracker::get_app_usage
+            set_peek_privacy_image,
+            usage_tracker::get_app_usage,
+            start_hr_scan,
+
+            stop_hr_scan,
+            get_hr_status,
+            set_hr_device_filter,
+            get_hr_device_filter,
+            open_hr_overlay
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
