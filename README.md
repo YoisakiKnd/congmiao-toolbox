@@ -36,8 +36,8 @@ bun run tauri:build
 Version releases are published from GitHub Actions when you push a tag in the form `v*`.
 
 ```bash
-git tag v0.1.2
-git push origin v0.1.2
+git tag v0.1.3
+git push origin v0.1.3
 ```
 
 The current workflow publishes:
