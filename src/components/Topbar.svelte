@@ -249,8 +249,8 @@
       aria-label={updatePendingVersion ? `安装 v${updatePendingVersion}` : '检查更新'}
       onclick={handleUpdateClick}
     >
-      <span class="material-symbols-rounded">{updateIcon}</span>
-      <span>{updateButtonLabel}</span>
+      <span class="material-symbols-rounded">{updateIcon()}</span>
+      <span>{updateButtonLabel()}</span>
     </button>
 
     <div class="version-chip">v{appState.appVersion}</div>
