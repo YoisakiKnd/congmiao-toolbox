@@ -34,7 +34,7 @@ pub fn init(app_handle: AppHandle) {
         data: Mutex::new(initial_data),
         save_path,
     });
-    
+
     app_handle.manage(state.clone());
 
     std::thread::spawn(move || {
@@ -72,7 +72,7 @@ pub fn get_app_usage(state: tauri::State<'_, Arc<TrackerState>>) -> Vec<AppUsage
             seconds: *v,
         })
         .collect();
-        
+
     vec.sort_by(|a, b| b.seconds.cmp(&a.seconds));
     vec
 }

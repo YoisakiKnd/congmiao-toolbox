@@ -17,6 +17,13 @@ struct SystemStats {
     memory_total: u64,
 }
 
+fn peek_server_url() -> String {
+    let my_local_ip = local_ip_address::local_ip()
+        .map(|ip| ip.to_string())
+        .unwrap_or_else(|_| "127.0.0.1".to_string());
+    format!("http://{}:3000", my_local_ip)
+}
+
 #[tauri::command]
 fn get_system_stats(state: tauri::State<'_, AppState>) -> SystemStats {
     let mut sys = state.sys.lock().unwrap();
@@ -32,10 +39,7 @@ fn get_system_stats(state: tauri::State<'_, AppState>) -> SystemStats {
 #[tauri::command]
 async fn start_peek_server() -> Result<String, String> {
     peek_server::run_server().await;
-    let my_local_ip = local_ip_address::local_ip()
-        .map(|ip| ip.to_string())
-        .unwrap_or_else(|_| "127.0.0.1".to_string());
-    Ok(format!("http://{}:3000", my_local_ip))
+    Ok(peek_server_url())
 }
 
 #[tauri::command]
@@ -62,11 +66,15 @@ fn get_privacy_status() -> bool {
 }
 
 #[tauri::command]
+fn get_peek_server_url() -> String {
+    peek_server_url()
+}
+
+#[tauri::command]
 fn set_peek_privacy_image(path: Option<String>) {
     let mut p = peek_server::PRIVACY_IMAGE_PATH.get_or_init(|| std::sync::Mutex::new(None)).lock().unwrap();
     *p = path;
 }
-
 
 #[tauri::command]
 fn start_hr_scan(app_handle: tauri::AppHandle) {
@@ -108,16 +116,16 @@ async fn open_hr_overlay(app_handle: tauri::AppHandle) -> Result<(), String> {
     if app_handle.get_webview_window("hr-overlay").is_some() {
         return Ok(());
     }
-    
+
     let url = tauri::WebviewUrl::App("index.html#/hr-overlay".into());
-    
+
     WebviewWindowBuilder::new(&app_handle, "hr-overlay", url)
         .title("♥ Heart Rate Monitor")
         .inner_size(320.0, 200.0)
         .resizable(true)
         .build()
         .map_err(|e| format!("Failed to open overlay: {}", e))?;
-    
+
     Ok(())
 }
 
@@ -125,9 +133,11 @@ async fn open_hr_overlay(app_handle: tauri::AppHandle) -> Result<(), String> {
 pub fn run() {
     let mut sys = System::new_all();
     sys.refresh_cpu_usage();
-    
-    tauri::Builder::default()
+
+    let builder = tauri::Builder::default()
         .setup(|app| {
+            #[cfg(desktop)]
+            app.handle().plugin(tauri_plugin_updater::Builder::new().build())?;
             usage_tracker::init(app.handle().clone());
             Ok(())
         })
@@ -143,16 +153,28 @@ pub fn run() {
             get_peek_status,
             toggle_privacy,
             get_privacy_status,
+            get_peek_server_url,
             set_peek_privacy_image,
             usage_tracker::get_app_usage,
             start_hr_scan,
-
             stop_hr_scan,
             get_hr_status,
             set_hr_device_filter,
             get_hr_device_filter,
             open_hr_overlay
         ])
+        ;
+
+    #[cfg(desktop)]
+    let builder = builder
+        .plugin(tauri_plugin_process::init())
+        .plugin(
+            tauri_plugin_autostart::Builder::new()
+                .app_name("Congmiao Toolbox")
+                .build(),
+        );
+
+    builder
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

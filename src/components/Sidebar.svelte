@@ -62,7 +62,7 @@
         <span class="material-symbols-rounded">search</span>
         <span>搜索工具 (Cmd+K)</span>
       </button>
-      <div class="version">v0.1.0</div>
+      <div class="version">v{appState.appVersion}</div>
     {/if}
   </div>
 </aside>

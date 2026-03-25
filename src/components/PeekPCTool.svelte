@@ -1,47 +1,85 @@
 <script lang="ts">
   import { invoke } from '@tauri-apps/api/core';
-  import { onMount, onDestroy } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
   import { open } from '@tauri-apps/plugin-dialog';
+  import { copyText } from '../tools';
 
-  interface MediaInfo {
+  interface MemoryInfo {
+    total: number;
+    used: number;
+    available: number;
+    used_percent: number;
+  }
+
+  interface ForegroundWindowInfo {
     title: string;
-    artist: string;
-    album: string;
-    playing: boolean;
+    process_name: string;
+    process_id: number;
   }
 
-
-  interface AudioStatus {
-    volume: number;
-    muted: boolean;
-    media: MediaInfo | null;
+  interface PeekStatusResponse {
+    status: string;
+    cpu: number;
+    memory: MemoryInfo;
+    foreground_window: ForegroundWindowInfo | null;
   }
+
+  const emptyStatus: PeekStatusResponse = {
+    status: 'idle',
+    cpu: 0,
+    memory: {
+      total: 0,
+      used: 0,
+      available: 0,
+      used_percent: 0
+    },
+    foreground_window: null
+  };
 
   let isRunning = $state(false);
   let isPrivacyEnabled = $state(false);
   let privacyImagePath = $state<string | null>(null);
   let isToggling = $state(false);
-  let localIp = $state('0.0.0.0');
-  let statusTimer: ReturnType<typeof setInterval>;
+  let serverUrl = $state('http://127.0.0.1:3000');
+  let peekStatus = $state<PeekStatusResponse>(emptyStatus);
+  let statusTimer: ReturnType<typeof setInterval> | undefined;
 
-  let audioStatus = $state<AudioStatus>({ volume: 0, muted: false, media: null });
+  const screenshotUrl = $derived(`${serverUrl}/api/screenshot`);
+  const statusUrl = $derived(`${serverUrl}/api/status`);
+
+  const formatMegabytes = (value: number) => {
+    if (!value) return '--';
+    if (value >= 1024) return `${(value / 1024).toFixed(1)} GB`;
+    return `${value.toFixed(0)} MB`;
+  };
+
+  const refreshServerUrl = async () => {
+    serverUrl = await invoke<string>('get_peek_server_url');
+  };
 
   const checkStatus = async () => {
     isRunning = await invoke<boolean>('get_peek_status');
     isPrivacyEnabled = await invoke<boolean>('get_privacy_status');
-    // We assume there's a way to get the audio status too
-    // In our Axum API it is /api/status, 
-    // but let's just use a simple fetch here if running
-    if (isRunning) {
-      try {
-        const resp = await fetch(`http://localhost:3000/api/status`);
-        const data = await resp.json();
-        audioStatus = data.audio;
-      } catch (e) { console.error(e); }
+
+    if (!isRunning) {
+      peekStatus = emptyStatus;
+      return;
+    }
+
+    await refreshServerUrl();
+
+    try {
+      const resp = await fetch(statusUrl);
+      if (!resp.ok) throw new Error(`Unexpected status: ${resp.status}`);
+      peekStatus = await resp.json();
+    } catch (error) {
+      console.error(error);
+      peekStatus = emptyStatus;
     }
   };
 
   onMount(async () => {
+    await refreshServerUrl();
     await checkStatus();
     statusTimer = setInterval(checkStatus, 3000);
   });
@@ -53,16 +91,21 @@
   const handleToggleServer = async () => {
     if (isToggling) return;
     isToggling = true;
+
     try {
       if (isRunning) {
         await invoke('stop_peek_server');
         isRunning = false;
-        localIp = '0.0.0.0';
+        peekStatus = emptyStatus;
       } else {
-        localIp = await invoke<string>('start_peek_server');
+        serverUrl = await invoke<string>('start_peek_server');
         isRunning = true;
+        await checkStatus();
       }
-    } catch (e) { console.error(e); }
+    } catch (error) {
+      console.error(error);
+    }
+
     isToggling = false;
   };
 
@@ -75,6 +118,7 @@
       multiple: false,
       filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp'] }]
     });
+
     if (selected && typeof selected === 'string') {
       privacyImagePath = selected;
       await invoke('set_peek_privacy_image', { path: selected });
@@ -86,20 +130,8 @@
     await invoke('set_peek_privacy_image', { path: null });
   };
 
-  const handleToggleMute = async () => {
-    const newMute = !audioStatus.muted;
-    // We can call our Axum API or a Tauri command. 
-    // Let's use the Axum API to demonstrate the "remote" control capability.
-    try {
-      await fetch(`http://localhost:3000/api/audio`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mute: newMute })
-      });
-      audioStatus.muted = newMute;
-    } catch (e) {
-      console.error(e);
-    }
+  const handleCopyUrl = async (value: string) => {
+    await copyText(value);
   };
 </script>
 
@@ -110,33 +142,37 @@
     </div>
     <div class="title-meta">
       <h3>Peek PC 遥控监控</h3>
-      <p>在局域网内通过浏览器或其他设备监控本机屏幕。{isRunning ? '服务已启动' : '服务未运行'}</p>
+      <p>现在默认输出模糊化截图，并同步前台窗口状态。{isRunning ? '服务已启动' : '服务未运行'}</p>
     </div>
   </div>
 
   <div class="control-grid">
-    <!-- Server Status Card -->
     <div class="card status-card" class:active={isRunning}>
       <div class="card-title">
         <span class="material-symbols-rounded">sensors</span>
         服务状态
       </div>
-      <div class="ip-display">
+
+      <div class="endpoint-block">
         <span class="label">访问地址</span>
-        <code>http://{localIp}:3000</code>
+        <div class="code-row">
+          <code>{serverUrl}</code>
+          <button class="mini-btn" onclick={() => handleCopyUrl(serverUrl)}>复制</button>
+        </div>
       </div>
+
       <button class="toggle-btn" onclick={handleToggleServer}>
         <span class="material-symbols-rounded">{isRunning ? 'stop_circle' : 'play_circle'}</span>
         {isRunning ? '停止服务端' : '启动服务端'}
       </button>
     </div>
 
-    <!-- Privacy Settings Card -->
     <div class="card settings-card">
       <div class="card-title">
         <span class="material-symbols-rounded">visibility_off</span>
-        隐私模式 (高强度 80% 模糊)
+        隐私模式
       </div>
+
       <div class="setting-row">
         <span>启用隐私遮罩</span>
         <button class="switch" class:on={isPrivacyEnabled} onclick={handleTogglePrivacy} title="切换隐私遮罩" aria-label="切换隐私遮罩">
@@ -144,7 +180,10 @@
         </button>
       </div>
 
-      
+      <div class="privacy-note">
+        常规截图已经默认模糊；开启隐私模式后会进一步加重模糊，或直接返回你设置的替代图片。
+      </div>
+
       <div class="image-selector">
         <span class="label">自定义隐私图片</span>
         {#if privacyImagePath}
@@ -163,54 +202,75 @@
       </div>
     </div>
 
-    <!-- Audio Settings Card -->
-    <div class="card settings-card">
+    <div class="card monitor-card">
       <div class="card-title">
-        <span class="material-symbols-rounded">volume_up</span>
-        音频控制 (Win/Mac)
-      </div>
-      <div class="setting-row">
-        <span>系统静音</span>
-        <button class="switch" class:on={audioStatus.muted} onclick={handleToggleMute} title="切换静音" aria-label="切换静音">
-          <div class="knob"></div>
-        </button>
+        <span class="material-symbols-rounded">monitoring</span>
+        系统状态
       </div>
 
-      <div class="volume-info">
-        <span class="label">当前音量</span>
-        <div class="vol-bar">
-          <div class="vol-fill" style="width: {audioStatus.volume}%"></div>
+      <div class="metric-grid">
+        <div class="metric">
+          <span class="metric-label">CPU</span>
+          <strong>{peekStatus.cpu.toFixed(1)}%</strong>
         </div>
-        <span class="vol-num">{audioStatus.volume}%</span>
+        <div class="metric">
+          <span class="metric-label">内存占用</span>
+          <strong>{peekStatus.memory.used_percent.toFixed(1)}%</strong>
+        </div>
+        <div class="metric wide">
+          <span class="metric-label">已用 / 总量</span>
+          <strong>{formatMegabytes(peekStatus.memory.used)} / {formatMegabytes(peekStatus.memory.total)}</strong>
+        </div>
+        <div class="metric wide">
+          <span class="metric-label">可用内存</span>
+          <strong>{formatMegabytes(peekStatus.memory.available)}</strong>
+        </div>
+      </div>
+
+      <div class="window-card">
+        <span class="label">前台窗口</span>
+        {#if peekStatus.foreground_window}
+          <strong class="window-title">{peekStatus.foreground_window.title || '未命名窗口'}</strong>
+          <span class="window-meta">
+            {peekStatus.foreground_window.process_name || '未知进程'} · PID {peekStatus.foreground_window.process_id}
+          </span>
+        {:else}
+          <span class="window-empty">当前暂时获取不到前台窗口信息</span>
+        {/if}
       </div>
     </div>
 
-    <!-- Media Info Card -->
-    {#if audioStatus.media}
-      <div class="card media-card">
-        <div class="card-title">
-          <span class="material-symbols-rounded">music_note</span>
-          正在播放
-        </div>
-        <div class="media-content">
-          <div class="media-info">
-            <span class="song-title">{audioStatus.media.title}</span>
-            <span class="artist-name">{audioStatus.media.artist}</span>
-            <span class="album-name">{audioStatus.media.album}</span>
-          </div>
-          <div class="play-state" class:playing={audioStatus.media.playing}>
-            <span class="material-symbols-rounded">
-              {audioStatus.media.playing ? 'pause_circle' : 'play_circle'}
-            </span>
-          </div>
+    <div class="card endpoint-card">
+      <div class="card-title">
+        <span class="material-symbols-rounded">image</span>
+        接口概览
+      </div>
+
+      <div class="endpoint-block">
+        <span class="label">截图接口</span>
+        <div class="code-row">
+          <code>{screenshotUrl}</code>
+          <button class="mini-btn" onclick={() => handleCopyUrl(screenshotUrl)}>复制</button>
         </div>
       </div>
-    {/if}
+
+      <div class="endpoint-block">
+        <span class="label">状态接口</span>
+        <div class="code-row">
+          <code>{statusUrl}</code>
+          <button class="mini-btn" onclick={() => handleCopyUrl(statusUrl)}>复制</button>
+        </div>
+      </div>
+
+      <p class="endpoint-note">
+        这版参考了 `Peek-PC-2.0` 的状态接口思路，补上了前台窗口信息；截图则固定为默认模糊输出，不再暴露额外调参。
+      </p>
+    </div>
   </div>
 
   <div class="tip-box">
     <span class="material-symbols-rounded">info</span>
-    <p>隐私模式会对截图进行多重下采样并执行 30.0 径向模糊，确保关键文本无法辨认。</p>
+    <p>截图接口现在默认会先缩放再模糊，并带有短时缓存，适合被局域网设备连续轮询。</p>
   </div>
 </div>
 
@@ -219,7 +279,7 @@
     display: flex;
     flex-direction: column;
     gap: 32px;
-    max-width: 900px;
+    max-width: 980px;
   }
 
   .tool-header {
@@ -257,7 +317,7 @@
     padding: 24px;
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 18px;
   }
 
   .card-title {
@@ -271,20 +331,55 @@
 
   .card-title .material-symbols-rounded { font-size: 18px; color: var(--text-secondary); }
 
-  .ip-display {
+  .label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-caption);
+    text-transform: uppercase;
+  }
+
+  .endpoint-block {
     display: flex;
     flex-direction: column;
     gap: 8px;
   }
 
-  .label { font-size: 12px; font-weight: 600; color: var(--text-caption); text-transform: uppercase; }
+  .code-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
   code {
+    flex: 1;
+    min-width: 0;
     background: var(--bg-panel1);
     padding: 12px;
     border-radius: 12px;
     font-family: ui-monospace, SFMono-Regular, monospace;
-    font-size: 14px;
+    font-size: 13px;
     color: #0A84FF;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mini-btn {
+    flex-shrink: 0;
+    padding: 10px 12px;
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    background: var(--bg-panel1);
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .mini-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--border-focus);
   }
 
   .toggle-btn {
@@ -341,6 +436,21 @@
 
   .switch.on .knob { transform: translateX(20px); }
 
+  .privacy-note {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+    background: var(--bg-panel1);
+    border-radius: 14px;
+    padding: 12px 14px;
+  }
+
+  .image-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
   .outline-btn {
     display: flex;
     align-items: center;
@@ -369,26 +479,67 @@
     font-size: 13px;
   }
 
-  .path { color: var(--text-primary); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px; }
+  .path {
+    color: var(--text-primary);
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 180px;
+  }
 
-  .clear-btn { background: transparent; border: none; color: var(--text-caption); cursor: pointer; display: flex; }
+  .clear-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-caption);
+    cursor: pointer;
+    display: flex;
+  }
+
   .clear-btn:hover { color: #FF3B30; }
 
-  .volume-info { display: flex; flex-direction: column; gap: 8px; }
-  .vol-bar { height: 6px; background: var(--bg-panel1); border-radius: 3px; overflow: hidden; }
-  .vol-fill { height: 100%; background: #0A84FF; border-radius: 3px; transition: width 0.3s ease; }
-  .vol-num { font-size: 12px; font-weight: 700; color: var(--text-primary); align-self: flex-end; }
+  .metric-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
 
-  .media-card { background: linear-gradient(135deg, var(--bg-panel0) 0%, rgba(10, 132, 255, 0.05) 100%); }
-  .media-content { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-  .media-info { display: flex; flex-direction: column; gap: 2px; overflow: hidden; }
-  .song-title { font-size: 15px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .artist-name { font-size: 13px; font-weight: 500; color: var(--text-secondary); }
-  .album-name { font-size: 11px; color: var(--text-caption); }
-  
-  .play-state { color: #0A84FF; }
-  .play-state.playing { color: #34C759; }
-  .play-state .material-symbols-rounded { font-size: 32px; }
+  .metric {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 14px;
+    border-radius: 14px;
+    background: var(--bg-panel1);
+  }
+
+  .metric.wide { grid-column: span 2; }
+  .metric-label { font-size: 12px; color: var(--text-caption); text-transform: uppercase; }
+  .metric strong { font-size: 16px; color: var(--text-primary); }
+
+  .window-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(10, 132, 255, 0.07), rgba(10, 132, 255, 0.02));
+    border: 1px solid rgba(10, 132, 255, 0.1);
+  }
+
+  .window-title {
+    font-size: 15px;
+    color: var(--text-primary);
+    line-height: 1.4;
+  }
+
+  .window-meta,
+  .window-empty,
+  .endpoint-note {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
 
   .tip-box {
     display: flex;

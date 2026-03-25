@@ -145,6 +145,7 @@ export const settingsGroups: SettingsGroup[] = [
 ];
 
 export class AppState {
+  appVersion = $state('0.1.0');
   theme = $state<'dark' | 'light'>('light');
   sidebarCollapsed = $state(true);
   activeNavIndex = $state(0);
