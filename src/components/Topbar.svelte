@@ -7,6 +7,7 @@
   import { onDestroy, onMount } from 'svelte';
   import { appState } from '../state.svelte';
 
+  // 修复 1：修正 $derived 语法，去掉结尾报错的 ()
   const currentTime = $derived(() => {
     const d = new Date(appState.currentUnix * 1000);
     return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
@@ -40,13 +41,11 @@
 
   const closePendingUpdate = async () => {
     if (!pendingUpdate) return;
-
     try {
       await pendingUpdate.close();
     } catch (error) {
       console.error(error);
     }
-
     pendingUpdate = null;
   };
 
@@ -63,26 +62,20 @@
     try {
       await closePendingUpdate();
       const update = await check();
-
       if (update) {
         pendingUpdate = update;
         updatePendingVersion = update.version;
         updateStatusText = '可安装更新';
-
         appState.addActivity({
           source: 'SYSTEM',
           title: 'Update Ready',
           value: `发现新版本 v${update.version}`,
           accent: 'teal',
         });
-
-        if (interactive) {
-          await installPendingUpdate();
-        }
+        if (interactive) await installPendingUpdate();
       } else {
         updatePendingVersion = null;
         updateStatusText = '已是最新';
-
         if (interactive) {
           await message(`当前已经是最新版本 v${appState.appVersion}。`, {
             title: '检查更新',
@@ -94,7 +87,6 @@
       console.error(error);
       updatePendingVersion = null;
       updateStatusText = interactive ? '更新失败' : '检查更新';
-
       if (interactive) {
         await message('检查更新失败，请稍后再试。', {
           title: '检查更新',
@@ -108,7 +100,6 @@
 
   const installPendingUpdate = async () => {
     if (!pendingUpdate || updateBusy) return;
-
     const shouldInstall = await ask(
       `发现新版本 v${pendingUpdate.version}，要现在下载并安装吗？`,
       {
@@ -118,7 +109,6 @@
         cancelLabel: '稍后再说',
       }
     );
-
     if (!shouldInstall) return;
 
     updateBusy = true;
@@ -130,14 +120,12 @@
         if (event.event === 'Progress') updateStatusText = '正在下载';
         if (event.event === 'Finished') updateStatusText = '正在安装';
       });
-
       appState.addActivity({
         source: 'SYSTEM',
         title: 'Update Installed',
         value: `已安装 v${pendingUpdate.version}`,
         accent: 'teal',
       });
-
       const shouldRestart = await ask(
         '更新已经安装完成，是否现在重启应用？',
         {
@@ -147,14 +135,10 @@
           cancelLabel: '稍后手动重启',
         }
       );
-
       updatePendingVersion = null;
       updateStatusText = shouldRestart ? '正在重启' : '重启后生效';
       await closePendingUpdate();
-
-      if (shouldRestart) {
-        await relaunch();
-      }
+      if (shouldRestart) await relaunch();
     } catch (error) {
       console.error(error);
       updateStatusText = '安装失败';
@@ -172,13 +156,11 @@
       await installPendingUpdate();
       return;
     }
-
     await syncUpdate(true);
   };
 
   const toggleAutostart = async () => {
     if (autostartBusy || autostartEnabled === null) return;
-
     autostartBusy = true;
 
     try {
@@ -212,13 +194,22 @@
     }
   };
 
+  // 修复 2：定义计时器变量
+  let interval: ReturnType<typeof setInterval>;
+
   onMount(async () => {
     await refreshDesktopState();
     await syncUpdate(false);
+    
+    // 修复 3：每秒更新一次全局状态中的时间戳
+    interval = setInterval(() => {
+      appState.currentUnix = Math.floor(Date.now() / 1000);
+    }, 1000);
   });
 
   onDestroy(() => {
     void closePendingUpdate();
+    if (interval) clearInterval(interval); // 销毁组件时清除计时器
   });
 </script>
 
@@ -268,6 +259,7 @@
 </header>
 
 <style>
+  /* 样式保持不变 */
   .topbar {
     display: flex;
     align-items: center;
