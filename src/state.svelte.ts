@@ -12,7 +12,9 @@ export type ToolId =
   | 'hash-check'
   | 'batch-rename'
   | 'sort-rule'
-  | 'duplicate-scan';
+  | 'duplicate-scan'
+  | 'lucky-wheel';
+
 
 export type ToolCommand = {
   id: ToolId;
@@ -136,7 +138,17 @@ export const commands: ToolCommand[] = [
     accent: 'blue',
     keywords: ['duplicate', 'scan', 'file'],
   },
+  {
+    id: 'lucky-wheel',
+    title: 'Lucky Wheel',
+    subtitle: '多层大转盘，支持大类/小类多级随机',
+    shortcut: 'Cmd/Ctrl+L',
+    icon: 'cyclone',
+    accent: 'blue',
+    keywords: ['lucky', 'wheel', 'random', 'roll', '转盘', '幸运'],
+  },
 ];
+
 
 export const settingsGroups: SettingsGroup[] = [
   { title: 'Stack', items: ['Svelte 5', 'Tailwind-free Custom UI', 'Tauri 2', 'Bun'] },

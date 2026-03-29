@@ -16,7 +16,9 @@
   import ScreenTimeView from './components/ScreenTimeView.svelte';
   import HeartRateWidget from './components/HeartRateWidget.svelte';
   import HROverlay from './components/HROverlay.svelte';
+  import LuckyWheelTool from './components/LuckyWheelTool.svelte';
   import { appState } from './state.svelte';
+
   import { runTool } from './tools';
   import { onMount } from 'svelte';
 
@@ -92,7 +94,10 @@
           <div class="full-page-tool"><TranslatorTool /></div>
         {:else if appState.activeToolId === 'peek_pc'}
           <div class="full-page-tool"><PeekPCTool /></div>
+        {:else if appState.activeToolId === 'lucky-wheel'}
+          <div class="full-page-tool"><LuckyWheelTool /></div>
         {:else}
+
           <div class="tool-directory">
             <div class="dir-header">
               <h3>全部功能大厅</h3>
@@ -135,7 +140,12 @@
                 <div class="icon blue"><span class="material-symbols-rounded">desktop_windows</span></div>
                 <div class="info"><h4>Peek 远程监视</h4><p>局域网跨屏监视硬件状态</p></div>
               </button>
+              <button class="tool-card" onclick={() => appState.activeToolId = 'lucky-wheel'}>
+                <div class="icon purple"><span class="material-symbols-rounded">cyclone</span></div>
+                <div class="info"><h4>幸运大转盘</h4><p>多级随机决策神器</p></div>
+              </button>
             </div>
+
           </div>
         {/if}
       {:else if appState.activeNavIndex === 2}
