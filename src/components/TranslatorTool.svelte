@@ -9,7 +9,7 @@
   // Standard lang pairs supported by MyMemory API (free public)
   let sourceLang = $state('en');
   let targetLang = $state('zh-CN');
-  let timer: any;
+  let timer: ReturnType<typeof setTimeout>;
 
   const translate = async () => {
     errorMsg = '';

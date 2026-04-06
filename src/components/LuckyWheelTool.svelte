@@ -62,6 +62,7 @@
   let isSpinning = $state(false);
   let rotation = $state(0);
   let result = $state<string | null>(null);
+  let skipTransition = $state(false);
   let importText = $state('');
   let showImportModal = $state(false);
 
@@ -71,6 +72,7 @@
     if (isSpinning || currentOptions.length === 0) return;
     isSpinning = true;
     result = null;
+    skipTransition = false;
 
     const extraSpins = 5 + Math.random() * 5;
     const randomAngle = Math.random() * 360;
@@ -80,14 +82,18 @@
 
     setTimeout(() => {
       isSpinning = false;
-      // CORRECT CALCULATION:
-      // Item 0 is at top (-90deg). Rotation is clockwise.
-      // The item at top post-rotation is the one whose relative angle was (360 - rotation % 360)
-      const normalizedAngle = (targetRotation % 360);
-      const pointerAngleRelativeToWheel = (360 - normalizedAngle) % 360;
-      const index = Math.floor(pointerAngleRelativeToWheel / segmentAngle) % currentOptions.length;
+
+      const normalizedAngle = ((targetRotation % 360) + 360) % 360;
+      const pointerAngle = (360 - normalizedAngle) % 360;
+      const index = Math.floor(pointerAngle / segmentAngle) % currentOptions.length;
       
       result = currentOptions[index];
+
+      // Normalize rotation to prevent float precision issues over many spins.
+      // skipTransition ensures the wheel snaps to the visually-identical
+      // normalized angle without triggering a backwards animation.
+      skipTransition = true;
+      rotation = normalizedAngle;
 
       appState.addActivity({
         source: 'TEXT',
@@ -95,11 +101,10 @@
         value: currentCategory ? `在 ${currentCategory.name} 中` : '大分类',
         accent: 'blue'
       });
-    }, 4000);
+    }, 4200);
   };
 
   const enterCategory = (name: string) => {
-    // Look into current level
     let next: WheelCategory | undefined;
     if (currentCategory === null) {
       next = categories.find(c => c.name === name);
@@ -110,6 +115,7 @@
     if (next) {
       navPath = [...navPath, next];
       result = null;
+      skipTransition = true;
       rotation = 0;
     }
   };
@@ -117,6 +123,7 @@
   const backNav = () => {
     navPath = navPath.slice(0, -1);
     result = null;
+    skipTransition = true;
     rotation = 0;
   };
 
@@ -124,6 +131,13 @@
     if (result) {
       enterCategory(result);
     }
+  };
+
+  const navigateTo = (path: WheelCategory[]) => {
+    navPath = path;
+    result = null;
+    skipTransition = true;
+    rotation = 0;
   };
 
   const generateColors = (n: number) => {
@@ -180,7 +194,7 @@
   <div class="main-layout">
     <div class="wheel-container">
       <div class="pointer"></div>
-      <div class="wheel-wrapper" style="transform: rotate({rotation}deg); transition: transform 4s cubic-bezier(0.15, 0, 0.15, 1);">
+      <div class="wheel-wrapper" style="transform: rotate({rotation}deg);{skipTransition ? '' : ' transition: transform 4s cubic-bezier(0.15, 0, 0.15, 1);'}">
         <svg viewBox="0 0 100 100">
           <defs>
             <filter id="inner-shadow">
@@ -192,11 +206,20 @@
               <feComposite operator="over" in="shadow" in2="SourceGraphic" />
             </filter>
           </defs>
+          {#if currentOptions.length === 1}
+            <circle cx="50" cy="50" r="50" fill={optionColors[0]} />
+            <text
+              x="50" y="30" fill="white"
+              font-size="5" font-weight="800" text-anchor="middle"
+              style="text-shadow: 0 1px 2px rgba(0,0,0,0.3)"
+            >{currentOptions[0]}</text>
+          {:else}
           {#each currentOptions as option, i}
             {@const startAngle = i * segmentAngle - 90}
             {@const endAngle = (i + 1) * segmentAngle - 90}
+            {@const largeArc = segmentAngle > 180 ? 1 : 0}
             <path
-              d="M 50 50 L {50 + 50 * Math.cos(startAngle * Math.PI / 180)} {50 + 50 * Math.sin(startAngle * Math.PI / 180)} A 50 50 0 0 1 {50 + 50 * Math.cos(endAngle * Math.PI / 180)} {50 + 50 * Math.sin(endAngle * Math.PI / 180)} Z"
+              d="M 50 50 L {50 + 50 * Math.cos(startAngle * Math.PI / 180)} {50 + 50 * Math.sin(startAngle * Math.PI / 180)} A 50 50 0 {largeArc} 1 {50 + 50 * Math.cos(endAngle * Math.PI / 180)} {50 + 50 * Math.sin(endAngle * Math.PI / 180)} Z"
               fill={optionColors[i]}
               stroke="rgba(255,255,255,0.3)"
               stroke-width="0.5"
@@ -214,6 +237,7 @@
               {option}
             </text>
           {/each}
+          {/if}
         </svg>
       </div>
       
@@ -240,25 +264,25 @@
       <div class="quick-nav">
         <div class="section-title">直达分类</div>
         <div class="nav-stack">
-          <button class="nav-item" class:active={currentCategory === null} onclick={() => navPath = []}>
+          <button class="nav-item" class:active={currentCategory === null} onclick={() => navigateTo([])}>
             根目录 (大类)
           </button>
           {#each categories as cat}
              {#if cat.subCategories}
                <div class="sub-group">
-                 <button class="nav-item" class:active={currentCategory === cat} onclick={() => navPath = [cat]}>
+                 <button class="nav-item" class:active={currentCategory === cat} onclick={() => navigateTo([cat])}>
                     {cat.name}
                  </button>
                  <div class="child-list">
                     {#each cat.subCategories as sub}
-                      <button class="child-item" class:active={currentCategory === sub} onclick={() => navPath = [cat, sub]}>
+                      <button class="child-item" class:active={currentCategory === sub} onclick={() => navigateTo([cat, sub])}>
                         ↳ {sub.name}
                       </button>
                     {/each}
                  </div>
                </div>
              {:else}
-                <button class="nav-item" class:active={currentCategory === cat} onclick={() => navPath = [cat]}>
+                <button class="nav-item" class:active={currentCategory === cat} onclick={() => navigateTo([cat])}>
                   {cat.name}
                 </button>
              {/if}

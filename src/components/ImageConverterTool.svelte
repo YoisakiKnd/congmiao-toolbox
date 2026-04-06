@@ -1,5 +1,6 @@
 <script lang="ts">
   import { appState } from '../state.svelte';
+  import { onDestroy } from 'svelte';
 
   let targetFormat = $state('image/webp');
   let targetQuality = $state(90);
@@ -60,6 +61,10 @@
     };
     img.src = imageUrl;
   };
+
+  onDestroy(() => {
+    if (imageUrl) URL.revokeObjectURL(imageUrl);
+  });
 </script>
 
 <div class="tool-view">

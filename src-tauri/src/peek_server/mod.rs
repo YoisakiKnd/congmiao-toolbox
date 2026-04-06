@@ -286,21 +286,12 @@ fn encode_screenshot(rgba: image::RgbaImage, profile: ScreenshotProfile) -> Opti
         dynamic
     };
 
-    let mut bytes = Vec::new();
-    processed
-        .write_to(&mut Cursor::new(&mut bytes), image::ImageFormat::Jpeg)
-        .ok()?;
-
-    if profile.quality == 75 {
-        return Some(bytes);
-    }
-
     let processed_rgba = processed.to_rgba8();
-    let mut jpeg = Vec::new();
-    image::codecs::jpeg::JpegEncoder::new_with_quality(&mut jpeg, profile.quality)
+    let mut bytes = Vec::new();
+    image::codecs::jpeg::JpegEncoder::new_with_quality(&mut bytes, profile.quality)
         .encode_image(&image::DynamicImage::ImageRgba8(processed_rgba))
         .ok()?;
-    Some(jpeg)
+    Some(bytes)
 }
 
 fn jpeg_response(bytes: Vec<u8>) -> Response {

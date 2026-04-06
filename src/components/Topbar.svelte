@@ -7,13 +7,12 @@
   import { onDestroy, onMount } from 'svelte';
   import { appState } from '../state.svelte';
 
-  // 修复 1：修正 $derived 语法，去掉结尾报错的 ()
-  const currentTime = $derived(() => {
+  const currentTime = $derived.by(() => {
     const d = new Date(appState.currentUnix * 1000);
     return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
   });
 
-  const currentDate = $derived(() => {
+  const currentDate = $derived.by(() => {
     const d = new Date(appState.currentUnix * 1000);
     const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
     const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
@@ -27,13 +26,13 @@
   let updateStatusText = $state('检查更新');
   let pendingUpdate = $state<Update | null>(null);
 
-  const updateIcon = $derived(() => {
+  const updateIcon = $derived.by(() => {
     if (updateBusy) return 'progress_activity';
     if (updatePendingVersion) return 'download';
     return 'system_update';
   });
 
-  const updateButtonLabel = $derived(() => {
+  const updateButtonLabel = $derived.by(() => {
     if (updateBusy) return updateStatusText;
     if (updatePendingVersion) return `更新 ${updatePendingVersion}`;
     return updateStatusText;
@@ -215,8 +214,8 @@
 
 <header class="topbar">
   <div class="topbar-title">
-    <p class="eyebrow">{currentDate()}</p>
-    <h2>{currentTime()}</h2>
+    <p class="eyebrow">{currentDate}</p>
+    <h2>{currentTime}</h2>
   </div>
 
   <div class="topbar-actions">
@@ -240,8 +239,8 @@
       aria-label={updatePendingVersion ? `安装 v${updatePendingVersion}` : '检查更新'}
       onclick={handleUpdateClick}
     >
-      <span class="material-symbols-rounded">{updateIcon()}</span>
-      <span>{updateButtonLabel()}</span>
+      <span class="material-symbols-rounded">{updateIcon}</span>
+      <span>{updateButtonLabel}</span>
     </button>
 
     <div class="version-chip">v{appState.appVersion}</div>

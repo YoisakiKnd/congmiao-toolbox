@@ -1,7 +1,7 @@
 [package]
 name = "congmiao-toolbox"
-version = "0.1.3"
-description = "A personal desktop toolbox built with Tauri, React and Material UI."
+version = "0.2.0"
+description = "A personal desktop toolbox built with Tauri and Svelte."
 authors = ["tenonsuzu"]
 edition = "2021"
 

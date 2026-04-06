@@ -248,6 +248,16 @@ export async function runTool(id: ToolId) {
     case 'duplicate-scan':
       runComingSoon(id, 'Duplicate Scan');
       break;
+    case 'lucky-wheel':
+      appState.activeNavIndex = 1;
+      appState.activeToolId = 'lucky-wheel';
+      appState.addActivity({
+        source: 'TEXT',
+        title: 'Lucky Wheel',
+        value: '已打开幸运大转盘',
+        accent: 'blue',
+      });
+      break;
   }
 }
 

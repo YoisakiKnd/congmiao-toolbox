@@ -13,7 +13,16 @@ export type ToolId =
   | 'batch-rename'
   | 'sort-rule'
   | 'duplicate-scan'
-  | 'lucky-wheel';
+  | 'lucky-wheel'
+  | 'json'
+  | 'python'
+  | 'encoder'
+  | 'color'
+  | 'hash'
+  | 'image'
+  | 'timer'
+  | 'translator'
+  | 'peek_pc';
 
 
 export type ToolCommand = {
@@ -48,16 +57,7 @@ export function formatMeta() {
   });
 }
 
-export function formatDateTime(value: number) {
-  const date = new Date(value);
-  const year = date.getFullYear();
-  const month = `${date.getMonth() + 1}`.padStart(2, '0');
-  const day = `${date.getDate()}`.padStart(2, '0');
-  const hour = `${date.getHours()}`.padStart(2, '0');
-  const minute = `${date.getMinutes()}`.padStart(2, '0');
-  const second = `${date.getSeconds()}`.padStart(2, '0');
-  return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
-}
+
 
 export const navItems: NavItem[] = [
   { title: '仪表盘', caption: '添加小组件 / 快捷跳转', icon: 'dashboard' },
